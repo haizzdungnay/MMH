@@ -137,3 +137,16 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
+
+# CẤU HÌNH TRÌNH BĂM MẬT KHẨU
+# Đặt hasher tùy chỉnh của bạn lên ĐẦU danh sách.
+# Django sẽ sử dụng mục đầu tiên để tạo hash cho mật khẩu mới.
+# Các mục còn lại được dùng để xác thực các mật khẩu cũ (nếu có).
+# -----------------------------------------------------------------------------
+PASSWORD_HASHERS = [
+    'users.hashers.CustomSHA256Hasher',  # Hasher tùy chỉnh của bạn
+    'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
+    'django.contrib.auth.hashers.Argon2PasswordHasher',
+    'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
+]

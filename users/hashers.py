@@ -1,90 +1,77 @@
 # users/hashers.py
 
-import ctypes
-import os
-import secrets  # Thư viện để tạo salt an toàn
-from ctypes import c_size_t, c_uint8
+import hashlib
+import secrets
 from django.contrib.auth.hashers import BasePasswordHasher
 from django.utils.crypto import constant_time_compare
 
-# --- Cấu hình CTypes để gọi thư viện .dll ---
-try:
-    # Đảm bảo đường dẫn này đúng
-    dll = ctypes.cdll.LoadLibrary("lib/sha256.dll") 
-    # Khai báo prototype cho hàm sha256
-    dll.sha256.argtypes = [ctypes.c_char_p, c_size_t, ctypes.POINTER(c_uint8)]
-    dll.sha256.restype = None
-    C_AVAILABLE = True
-except (OSError, AttributeError):
-    print("WARNING: Could not load or configure sha256.dll.")
-    C_AVAILABLE = False
-# ---------------------------------------------
-
-
 class CustomSHA256Hasher(BasePasswordHasher):
     """
-    Trình băm mật khẩu tùy chỉnh sử dụng SHA-256 từ thư viện C với Salt.
-    Định dạng lưu trữ: algorithm$salt$hash
+    Trình băm mật khẩu tùy chỉnh sử dụng SHA-256 có sẵn của Python với Salt.
+    Định dạng lưu trữ trong database sẽ là: algorithm$salt$hash
     """
+    # Tên định danh cho thuật toán, sẽ được lưu trong chuỗi hash
     algorithm = "custom_sha256"
 
-    def _c_sha256(self, data: bytes) -> str:
-        """Hàm helper để gọi hàm C và trả về chuỗi hex."""
-        if not C_AVAILABLE:
-            # Phương án dự phòng nếu không tải được DLL, dùng thư viện của Python
-            import hashlib
-            return hashlib.sha256(data).hexdigest()
-
-        digest = (c_uint8 * 32)() # 32 bytes = 256 bits
-        dll.sha256(data, len(data), digest)
-        return bytes(digest).hex()
-
     def salt(self):
-        """Tạo salt ngẫu nhiên an toàn, 16 bytes (32 ký tự hex)."""
-        return secrets.token_hex(16)
+        """
+        Tạo ra một chuỗi "salt" (muối) ngẫu nhiên, an toàn về mặt mật mã học.
+        Salt dùng để đảm bảo hai mật khẩu giống nhau sẽ có hash khác nhau.
+        """
+        return secrets.token_hex(16)  # Tạo salt dài 32 ký tự hex
 
     def encode(self, password, salt=None):
         """
-        Tạo chuỗi hash từ mật khẩu và salt.
-        Đây là hàm được gọi khi tạo/thay đổi mật khẩu.
+        Đây là hàm được gọi khi người dùng tạo mới hoặc thay đổi mật khẩu.
+        Nó nhận mật khẩu thô (raw password) và tạo ra chuỗi hash để lưu vào database.
         """
+        # Đảm bảo mật khẩu không rỗng
         assert password is not None
+        # Nếu chưa có salt, tạo một salt mới
         if salt is None:
             salt = self.salt()
         
-        # Kết hợp salt và password trước khi băm
+        # Chuyển mật khẩu và salt sang dạng bytes
         password_bytes = password.encode('utf-8')
         salt_bytes = salt.encode('utf-8')
         
-        # Băm (salt + password)
-        hash_hex = self._c_sha256(salt_bytes + password_bytes)
+        # Sử dụng thư viện hashlib của Python để băm SHA-256
+        # Công thức: hash = SHA256(salt + password)
+        hash_obj = hashlib.sha256(salt_bytes + password_bytes)
+        hash_hex = hash_obj.hexdigest()
         
-        # Trả về theo định dạng chuẩn
+        # Trả về chuỗi hash hoàn chỉnh theo định dạng để lưu trữ
         return f"{self.algorithm}${salt}${hash_hex}"
 
     def verify(self, password, encoded):
         """
-        Kiểm tra mật khẩu người dùng nhập vào có khớp với chuỗi hash đã lưu không.
+        Đây là hàm được gọi khi người dùng đăng nhập.
+        Nó so sánh mật khẩu người dùng nhập vào với chuỗi hash trong database.
         """
         assert password is not None
         try:
-            # Tách chuỗi hash đã lưu thành các phần
-            algorithm, salt, hash_b = encoded.split('$', 2)
+            # Tách chuỗi hash đã lưu thành 3 phần: thuật toán, salt, và hash
+            algorithm, salt, hash_db = encoded.split('$', 2)
         except ValueError:
-            return False # Nếu định dạng sai, không khớp
+            # Nếu chuỗi trong DB không đúng định dạng, trả về False
+            return False
 
+        # Kiểm tra xem có đúng là thuật toán của chúng ta không
         if algorithm != self.algorithm:
             return False
         
-        # Băm lại mật khẩu người dùng nhập với salt đã lưu
+        # Băm lại mật khẩu mà người dùng vừa nhập với salt đã được lưu từ trước
+        # để xem kết quả có khớp không.
         encoded_2 = self.encode(password, salt)
-        _, _, hash_a = encoded_2.split('$', 2)
+        _, _, hash_input = encoded_2.split('$', 2)
 
-        # So sánh an toàn để chống tấn công timing attack
-        return constant_time_compare(hash_a, hash_b)
+        # Sử dụng hàm so sánh an toàn để chống "timing attacks"
+        return constant_time_compare(hash_input, hash_db)
 
     def safe_summary(self, encoded):
-        """Tạo bản tóm tắt an toàn để hiển thị trong trang admin."""
+        """
+        Tạo một bản tóm tắt an toàn về chuỗi hash để hiển thị trong trang admin của Django.
+        """
         algorithm, salt, hash_val = encoded.split('$', 2)
         return {
             'algorithm': algorithm,
