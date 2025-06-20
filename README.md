@@ -19,7 +19,7 @@ Password: Matkhau@123
 ### 1. Clone project
 
 ```bash
-git clone https://github.com/T-Hieu312/Python_Web_Applications.git
+git clone https://github.com/haizzdungnay/MMH
 cd Python_Web_Applications
 ```
 
