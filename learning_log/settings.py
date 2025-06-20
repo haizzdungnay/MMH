@@ -11,7 +11,7 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 """
 
 import os
-# import dj_database_url
+import dj_database_url
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -77,32 +77,19 @@ TEMPLATES = [
     },
 ]
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
 WSGI_APPLICATION = 'learning_log.wsgi.application'
 
-# AUTH_USER_MODEL = 'users.Profile'
 
-# # Database
-# # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
-
-# DATABASES = {
-#     'default': dj_database_url.config(
-#         default='postgres://uel0t7hntp9trb:p83dd508feb01572e3f93d9f4f4e1d41c4a65ad845b0cc82d0f7d6eb8780e4715@cf980tnnkgv1bp.cluster-czrs8kj4isg7.us-east-1.rds.amazonaws.com:5432/dcfaqkccj01n2l',  # Dùng cho local
-#         conn_max_age=600,
-#         ssl_require=True  # Bắt buộc SSL trên Heroku
-#     )
-# }
-
-# Database (SQLite cho phát triển local)
+# Database
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-    }
-}
 
+DATABASES = {
+    'default': dj_database_url.config(
+        default='postgres://uel0t7hntp9trb:p83dd508feb01572e3f93d9f4f4e1d41c4a65ad845b0cc82d0f7d6eb8780e4715@cf980tnnkgv1bp.cluster-czrs8kj4isg7.us-east-1.rds.amazonaws.com:5432/dcfaqkccj01n2l',  # Dùng cho local
+        conn_max_age=600,
+        ssl_require=True  # Bắt buộc SSL trên Heroku
+    )
+}
 
 
 # Password validation
@@ -150,3 +137,18 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
+
+# CẤU HÌNH TRÌNH BĂM MẬT KHẨU
+# Đặt hasher tùy chỉnh của bạn lên ĐẦU danh sách.
+# Django sẽ sử dụng mục đầu tiên để tạo hash cho mật khẩu mới.
+# Các mục còn lại được dùng để xác thực các mật khẩu cũ (nếu có).
+# -----------------------------------------------------------------------------
+PASSWORD_HASHERS = [
+    'users.hashers.CustomSHA256Hasher',  # Hasher tùy chỉnh của bạn
+    'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
+    'django.contrib.auth.hashers.Argon2PasswordHasher',
+    'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
+]
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

@@ -1,16 +1,21 @@
-"""Defines URL patterns for users"""
+# users/urls.py
 
-from django.urls import path, include
-from django.contrib.auth import views as auth_views
-
+from django.urls import path
+from django.contrib.auth.views import LoginView, LogoutView
 from . import views
 
 app_name = 'users'
 urlpatterns = [
-    # Include default auth urls.
-    path('', include('django.contrib.auth.urls')),
-    # Registration page.
+    # Login page
+    # SỬA Ở ĐÂY: Thay 'users/login.html' thành 'registration/login.html'
+    path('login/', LoginView.as_view(template_name='registration/login.html'), name='login'),
+
+    # Logout page
+    path('logout/', LogoutView.as_view(), name='logout'),
+    
+    # Registration page
     path('register/', views.register, name='register'),
-    # Login page with custom template.
-    path('login/', auth_views.LoginView.as_view(template_name='users/login.html'), name='login'),
+
+    # URL cho API login
+    path('api/login/', views.api_login, name='api_login'),
 ]
