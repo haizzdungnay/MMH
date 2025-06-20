@@ -10,7 +10,7 @@ Tài khoản Admin:
 
 Username: admin
 
-Password: Matkhau@123
+Password: 123
 
 ---
 
